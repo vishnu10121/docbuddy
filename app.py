@@ -3,13 +3,11 @@ import os
 import tempfile
 import time
 from pathlib import Path
-from dotenv import load_dotenv       # ✅ loads .env file
+from dotenv import load_dotenv
 from rag_engine import RAGEngine
 from monitor import QueryMonitor
 
-# Directly set the API key
-os.environ["GEMINI_API_KEY"] = "AIzaSyA3Kmwr8-8HgNQlnBF-eFCOuz1kACOWC_I"
-# Load environment variables from .env file
+# Load environment variables
 load_dotenv()
 
 # ─── Page Config ──────────────────────────────────────────────────────────────
@@ -82,16 +80,7 @@ monitor: QueryMonitor = st.session_state.monitor
 # ─── Sidebar ──────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("## ⚙️ Configuration")
-
-    hf_token = st.text_input(
-        "HuggingFace API Token",
-        value=os.getenv("HF_TOKEN", ""),
-        type="password",
-        help="Get your free token at huggingface.co/settings/tokens",
-    )
-    if hf_token:
-        os.environ["HF_TOKEN"] = hf_token
-
+    
     st.markdown("---")
     st.markdown("### 📄 Upload Document")
     uploaded_file = st.file_uploader(
@@ -125,49 +114,51 @@ with st.sidebar:
 
 # ─── Main Area ────────────────────────────────────────────────────────────────
 st.markdown("# 🧠 DocMind — RAG Assistant")
-st.markdown("Upload a PDF, then ask anything about it. Powered by LangChain + ChromaDB + Mistral.")
+st.markdown("Upload a PDF, then ask anything about it. Powered by LangChain + ChromaDB + Google Gemini.")
 
 # ── Process PDF ───────────────────────────────────────────────────────────────
 if process_btn:
     if not uploaded_file:
         st.warning("⚠️ Please upload a PDF first.")
-    elif not os.getenv("HF_TOKEN"):
-        st.error("❌ HuggingFace API Token is required.")
     else:
-        with st.status("Processing your PDF…", expanded=True) as status:
-            try:
-                # Clear previous engine if exists
-                if st.session_state.rag_engine:
-                    st.session_state.rag_engine.clear()
+        # Check if Gemini API key is set
+        if not os.getenv("GEMINI_API_KEY"):
+            st.error("❌ GEMINI_API_KEY is required. Please add it to secrets or .env file.")
+        else:
+            with st.status("Processing your PDF…", expanded=True) as status:
+                try:
+                    # Clear previous engine if exists
+                    if st.session_state.rag_engine:
+                        st.session_state.rag_engine.clear()
 
-                st.write("📥 Saving file…")
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-                    tmp.write(uploaded_file.read())
-                    tmp_path = tmp.name
+                    st.write("📥 Saving file…")
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+                        tmp.write(uploaded_file.read())
+                        tmp_path = tmp.name
 
-                st.write("✂️ Splitting into chunks…")
-                engine = RAGEngine(
-                    chunk_size=chunk_size,
-                    chunk_overlap=chunk_overlap,
-                    top_k=top_k,
-                )
+                    st.write("✂️ Splitting into chunks…")
+                    engine = RAGEngine(
+                        chunk_size=chunk_size,
+                        chunk_overlap=chunk_overlap,
+                        top_k=top_k,
+                    )
 
-                st.write("🔢 Generating embeddings (this may take ~1–2 min on CPU)…")
-                num_chunks = engine.load_pdf(tmp_path)
+                    st.write("🔢 Generating embeddings (this may take ~1–2 min on CPU)…")
+                    num_chunks = engine.load_pdf(tmp_path)
 
-                st.write("💾 Storing in ChromaDB…")
-                os.unlink(tmp_path)
+                    st.write("💾 Storing in ChromaDB…")
+                    os.unlink(tmp_path)
 
-                st.session_state.rag_engine = engine
-                st.session_state.pdf_loaded = True
-                st.session_state.chat_history = []
+                    st.session_state.rag_engine = engine
+                    st.session_state.pdf_loaded = True
+                    st.session_state.chat_history = []
 
-                status.update(label=f"✅ Ready! Indexed {num_chunks} chunks.", state="complete")
-                monitor.log_event("pdf_loaded", {"filename": uploaded_file.name, "chunks": num_chunks})
+                    status.update(label=f"✅ Ready! Indexed {num_chunks} chunks.", state="complete")
+                    monitor.log_event("pdf_loaded", {"filename": uploaded_file.name, "chunks": num_chunks})
 
-            except Exception as e:
-                status.update(label="❌ Failed to process PDF.", state="error")
-                st.error(f"Error: {str(e)}")
+                except Exception as e:
+                    status.update(label="❌ Failed to process PDF.", state="error")
+                    st.error(f"Error: {str(e)}")
 
 # ── Chat Interface ─────────────────────────────────────────────────────────────
 if st.session_state.pdf_loaded and st.session_state.rag_engine:
@@ -202,7 +193,7 @@ if st.session_state.pdf_loaded and st.session_state.rag_engine:
                     "sources": result["sources"],
                     "latency": latency,
                 })
-                st.rerun()   # force refresh to show new answer immediately
+                st.rerun()
 
             except Exception as e:
                 st.error(f"❌ Query failed: {str(e)}")
