@@ -66,7 +66,7 @@ class RAGEngine:
         
         # Force set the API key
         if not os.getenv("GEMINI_API_KEY"):
-            os.environ["GEMINI_API_KEY"] = "AIzaSyA3Kmwr8-8HgNQlnBF-eFCOuz1kACOWC_I"
+            os.environ["GEMINI_API_KEY"] = "AIzaSyBakZ96SfKsrisPRG-VYNF4dSCMA9QS5l0"
         
         # Configure Gemini
         api_key = os.getenv("GEMINI_API_KEY")
