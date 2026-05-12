@@ -44,7 +44,7 @@ class RAGEngine:
     
     def __init__(
         self,
-        model_id: str = "models/gemma-3-4b-it",  # ✅ Working (lighter model)
+        model_id: str = "models/gemini-1.5-flash",  # ✅ Working (lighter model)
         
         embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2",
         chunk_size: int = 500,
