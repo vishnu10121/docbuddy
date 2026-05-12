@@ -63,11 +63,11 @@ class RAGEngine:
 
     def __init__(
         self,
-        model_id: str = "gemini-pro",
+        model_id: str = "models/gemini-2.0-flash-lite",
         embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2",
-        chunk_size: int = 500,
-        chunk_overlap: int = 50,
-        top_k: int = 3,
+        chunk_size: int = 100,
+        chunk_overlap: int = 10,
+        top_k: int = 1,
         temperature: float = 0.7,
         max_new_tokens: int = 512,
     ):
