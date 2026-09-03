@@ -87,8 +87,16 @@ class RAGEngine:
         api_key = os.getenv("GEMINI_API_KEY")
 
         if not api_key:
+            try:
+                import streamlit as st
+                if hasattr(st, "secrets") and "GEMINI_API_KEY" in st.secrets:
+                    api_key = str(st.secrets["GEMINI_API_KEY"])
+            except Exception:
+                pass
+
+        if not api_key:
             raise EnvironmentError(
-                "GEMINI_API_KEY not found in .env file"
+                "GEMINI_API_KEY not found in .env file or Streamlit secrets"
             )
 
         genai.configure(api_key=api_key)

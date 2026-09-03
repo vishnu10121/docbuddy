@@ -9,6 +9,13 @@ from monitor import QueryMonitor
 
 load_dotenv()
 
+# Sync Streamlit Cloud secrets to environment variables if present
+try:
+    if hasattr(st, "secrets") and "GEMINI_API_KEY" in st.secrets:
+        os.environ["GEMINI_API_KEY"] = str(st.secrets["GEMINI_API_KEY"])
+except Exception:
+    pass
+
 # ─── Page Config ──────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="DocBuddy – Smart PDF Assistant",
