@@ -1,0 +1,17 @@
+# Environment variables (contains secret API keys)
+.env
+
+# Python cache & virtual environment
+__pycache__/
+*.pyc
+venv/
+.venv/
+env/
+
+# Logs
+logs/
+*.log
+
+# Temp files
+*.tmp
+tmp/

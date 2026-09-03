@@ -63,7 +63,7 @@ class RAGEngine:
 
     def __init__(
         self,
-        model_id: str = "models/gemini-2.0-flash-lite",
+        model_id: str = "models/gemini-3.6-flash",
         embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2",
         chunk_size: int = 100,
         chunk_overlap: int = 10,
@@ -72,7 +72,7 @@ class RAGEngine:
         max_new_tokens: int = 512,
     ):
 
-        self.model_id = model_id
+        self.model_id = os.getenv("GEMINI_MODEL", model_id)
         self.embedding_model = embedding_model
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
@@ -223,30 +223,48 @@ class RAGEngine:
         # ──────────────────────────────────────────────────────────────────────
         # STEP 3: GEMINI GENERATION
         # ──────────────────────────────────────────────────────────────────────
-        try:
+        candidate_models = [
+            self.model_id,
+            "models/gemini-3.6-flash",
+            "models/gemini-flash-latest",
+            "models/gemini-3.5-flash",
+            "models/gemini-3.5-flash-lite",
+        ]
+        # Remove duplicates while preserving order
+        candidate_models = list(dict.fromkeys(candidate_models))
 
-            response = self.model.generate_content(prompt)
+        last_err = None
+        for m_name in candidate_models:
+            try:
+                model_to_use = self.model if m_name == self.model_id else genai.GenerativeModel(m_name)
+                response = model_to_use.generate_content(prompt)
+                answer = response.text.strip()
+                if not answer:
+                    answer = (
+                        "I couldn't generate an answer. "
+                        "Please try another question."
+                    )
 
-            answer = response.text.strip()
-
-            if not answer:
-                answer = (
-                    "I couldn't generate an answer. "
-                    "Please try another question."
+                self.model_id = m_name
+                self.model = model_to_use
+                logger.info(
+                    "Generated answer (%d chars) using %s",
+                    len(answer),
+                    m_name
                 )
+                return {
+                    "answer": answer,
+                    "sources": sources
+                }
+            except Exception as e:
+                err_str = str(e)
+                last_err = e
+                if "404" in err_str or "not found" in err_str.lower() or "no longer available" in err_str.lower():
+                    logger.warning("Model %s failed with 404, trying next candidate...", m_name)
+                    continue
+                raise Exception(f"Gemini API error: {err_str}")
 
-            logger.info(
-                "Generated answer (%d chars)",
-                len(answer)
-            )
-
-            return {
-                "answer": answer,
-                "sources": sources
-            }
-
-        except Exception as e:
-            raise Exception(f"Gemini API error: {str(e)}")
+        raise Exception(f"Gemini API error: {str(last_err)}")
 
     # ──────────────────────────────────────────────────────────────────────────
     # CLEAR MEMORY
